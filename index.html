@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YouthPulse Vercel</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0a0a;color:#fff;font-family:sans-serif}
+header{position:sticky;top:0;background:#000;border-bottom:1px solid #222;padding:12px;display:flex;justify-content:space-between;z-index:5}
+.logo{font-weight:800}.logo span{color:#facc15}.btn{background:#facc15;color:#000;border:none;padding:6px 12px;border-radius:20px;font-weight:700}
+.card{background:#161616;border:1px solid #222;border-radius:14px;margin:12px;padding:0;overflow:hidden}
+.pad{padding:12px}.tag{background:#facc15;color:#000;font-size:10px;padding:3px 7px;border-radius:10px;font-weight:700}
+.title{font-size:14px;font-weight:600;margin-top:6px}
+#detail{position:fixed;inset:0;background:#000;z-index:50;display:none;overflow:auto;padding:16px}
+#detail.show{display:block}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:60;display:none;justify-content:center;padding:20px}#modal.show{display:flex}
+.box{background:#1e1e1e;border:1px solid #333;border-radius:14px;padding:14px;width:100%;max-width:480px}
+.inp{width:100%;background:#000;border:1px solid #333;border-radius:8px;padding:10px;color:#fff;margin-bottom:8px}
+</style>
+</head><body>
+<header><div class="logo">YouthPulse<span>.vercel</span> <small id="c" style="color:#666"></small></div><button class="btn" id="createBtn">+ Post</button></header>
+<div id="feed"></div>
+<div id="loader" style="text-align:center;padding:30px;color:#444">Scroll for more ↓</div>
+
+<!-- POST DETAIL -->
+<div id="detail">
+  <button onclick="document.getElementById('detail').classList.remove('show')" style="background:#222;color:#fff;border:none;padding:8px 14px;border-radius:20px">← Back</button>
+  <div id="detailContent" style="margin-top:14px"></div>
+  <div style="margin-top:16px">
+    <input id="commentInput" class="inp" placeholder="Write comment...">
+    <button class="btn" id="commentBtn">Comment</button>
+    <div id="commentsList" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<div id="modal"><div class="box"><h3>New Post</h3><br><input id="t" class="inp" placeholder="Title"><textarea id="d" class="inp" rows="3" placeholder="Story"></textarea><input id="im" class="inp" placeholder="Image URL"><div style="display:flex;gap:8px"><button class="inp" id="cancelBtn">Cancel</button><button class="inp" style="background:#facc15;color:#000;font-weight:700" id="pubBtn">Publish</button></div></div></div>
+
+<script>
+let feed=document.getElementById('feed'), after="", page=0, currentPost=null;
+const TITLES=["19yo from Nashik builds AI for farmers","Pune chai startup 40k/month","Cracked internship at 18","Mumbai hackathon mental health app","Delhi girl 1L/month earrings","GenZ skills over marks","Goat farm 30k","Zero to 10k followers meme page","Tutoring 500/day","Building in public Day 12","Left engineering for content","Free courses got job","Hostel notes business","Village boy freelancer","AI tools for students","First 1000 Rs online","College fest 50k profit","NEET fail to YouTuber","Parents said no still built","Indore streetwear viral"];
+function card(it){return `<div class="card" data-id="${it.id}"><div class="pad"><span class="tag">${it.tag}</span><span style="font-size:11px;color:#666"> ${it.time}</span><div class="title">${it.id}. ${it.title}</div><div style="font-size:12px;color:#888;margin-top:4px">${(it.selftext||'').slice(0,80)}... tap to open</div></div><div style="padding:0 12px 10px;font-size:11px;color:#555">▲ ${it.ups} • 💬 ${it.comments}</div></div>`}
+function makeLocal(id){return {id:id,title:TITLES[id%TITLES.length]+" #"+id,selftext:"Real youth story. Tap to open, like, comment, share. This feed never repeats for long time because IDs increase.",image:`https://picsum.photos/seed/${id}/600/350`,ups:100+Math.random()*1000|0,comments:5+Math.random()*50|0,sub:"YoungIndia",tag:"Youth News",time:Math.floor(Math.random()*10+1)+"h ago"}}
+let gid=0;
+function loadMore(n=8){for(let i=0;i<n;i++){gid++;let p=makeLocal(gid);let d=document.createElement('div');d.innerHTML=card(p);d.firstChild.onclick=()=>openPost(p);feed.appendChild(d.firstChild)}document.getElementById('c').innerText=`• ${gid} posts`}
+
+async function loadReddit(){
+ try{
+  // Vercel API route - works, no CORS block
+  let url = `/api/reddit?sub=india&after=${after}`;
+  // fallback for Acode testing (direct)
+  if(location.protocol==='file:' || location.hostname==='') url=`https://www.reddit.com/r/india/hot.json?limit=5&after=${after}`;
+  let r=await fetch(url); let j=await r.json(); after=j.data.after||"";
+  (j.data.children||[]).slice(0,3).forEach(c=>{gid++;let d=c.data;let p={id:gid,title:d.title,selftext:d.selftext||'From Reddit - tap to read full',image:d.preview?d.preview.images[0].source.url.replace(/&amp;/g,'&'):`https://picsum.photos/seed/rd${gid}/600/350`,ups:d.ups,comments:d.num_comments,sub:d.subreddit,tag:'Reddit Live',time:'now'};let div=document.createElement('div');div.innerHTML=card(p);div.firstChild.onclick=()=>openPost(p);feed.appendChild(div.firstChild);})
+ }catch(e){console.log('reddit fail, using local')}
+}
+
+function openPost(p){
+ currentPost=p;
+ document.getElementById('detail').classList.add('show');
+ document.getElementById('detailContent').innerHTML=`<span class="tag">${p.tag}</span><h2 style="margin-top:10px">${p.title}</h2><p style="color:#888;margin-top:8px">${p.time} • r/${p.sub} • ▲ ${p.ups} upvotes</p>${p.image?`<img src="${p.image}" style="width:100%;margin-top:12px;border-radius:12px">`:''}<p style="margin-top:12px;line-height:20px">${p.selftext}</p><div style="margin-top:16px;display:flex;gap:10px"><button class="btn" onclick="likePost()">▲ Like (${p.ups})</button><button class="btn" style="background:#222;color:#fff" onclick="navigator.share?navigator.share({title:p.title}):alert('Link copied')">↗ Share</button></div>`;
+ loadComments();
+}
+function likePost(){currentPost.ups++; openPost(currentPost)}
+function loadComments(){let list=JSON.parse(localStorage.getItem('comments_'+currentPost.id)||'[]');document.getElementById('commentsList').innerHTML=list.map(c=>`<div style="background:#161616;border:1px solid #222;border-radius:8px;padding:8px;margin-bottom:6px;font-size:13px">${c}</div>`).join('')||'<div style="color:#555;font-size:12px">No comments yet - be first</div>'}
+document.getElementById('commentBtn').onclick=()=>{let v=document.getElementById('commentInput').value.trim();if(!v) return;let k='comments_'+currentPost.id;let a=JSON.parse(localStorage.getItem(k)||'[]');a.push(v);localStorage.setItem(k,JSON.stringify(a));document.getElementById('commentInput').value='';loadComments();currentPost.comments++}
+
+document.getElementById('createBtn').onclick=()=>document.getElementById('modal').classList.add('show');
+document.getElementById('cancelBtn').onclick=()=>document.getElementById('modal').classList.remove('show');
+document.getElementById('pubBtn').onclick=()=>{let t=document.getElementById('t').value;if(!t) return alert('title');gid++;let p={id:gid,title:t,selftext:document.getElementById('d').value,image:document.getElementById('im').value,ups:1,comments:0,sub:'You',tag:'Your Story',time:'just now'};let div=document.createElement('div');div.innerHTML=card(p);div.firstChild.onclick=()=>openPost(p);feed.prepend(div.firstChild);document.getElementById('modal').classList.remove('show')}
+
+let obs=new IntersectionObserver(e=>{if(e[0].isIntersecting){loadMore(6);loadReddit()}},{rootMargin:"300px"});obs.observe(document.getElementById('loader'));
+loadMore(10);
+</script>
+</body></html>
